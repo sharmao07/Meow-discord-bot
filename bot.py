@@ -205,7 +205,7 @@ async def chii(ctx):
         await ctx.send("Please use #bot-commands for GIFs!", delete_after=5)
         
 @bot.command(name="usagi")
-async def chii(ctx):
+async def usagi(ctx):
     if check_permissions(ctx):
         await send_gif(ctx, "usagi chiikawa") 
     else:
@@ -271,20 +271,6 @@ async def woof(ctx):
         await send_gif(ctx, "cute dog")
     else:
         await ctx.send("Please use #bot-commands for GIFs!", delete_after=5)
-
- # GIF & Character Commands Section
-    embed.add_field(
-        name="✨ Fun & GIFs",
-        value="`?meow` - Send a cute cat GIF\n"
-              "`?woof` - Send a cute dog GIF\n"
-              "`?chii` - Chiikawa GIFs\n"
-              "`?hachi` - Hachiware GIFs\n"
-              "`?usagi` - Usagi GIFs\n"
-              "`?momo` - Momonga GIFs",
-        inline=False
-    )       
-
-
 
 @bot.command(name="rblx")
 async def rblx(ctx, genre: str = "all", page: int = 1):
@@ -610,9 +596,6 @@ async def rblx(ctx, genre: str = "all", page: int = 1):
     await ctx.send(embed=embed)
 
 
-
-
-
 @bot.command(name="coms")
 async def coms(ctx):
     if not check_permissions(ctx):
@@ -713,6 +696,7 @@ async def coin(ctx, choice: str, bet: int):
     embed.set_footer(text=f"New Balance: {vault[uid]:,}")
     await ctx.send(embed=embed)
 
+
 @bot.command()
 @commands.cooldown(1, 7, commands.BucketType.user)
 async def slots(ctx, bet: int):
@@ -754,6 +738,7 @@ async def slots(ctx, bet: int):
     
     await msg.edit(content=final_view)
 
+
 @bot.command(name="dice")
 @commands.cooldown(1, 7, commands.BucketType.user)
 async def dice_gamble(ctx, bet: int, guess: int):
@@ -787,7 +772,6 @@ async def dice_gamble(ctx, bet: int, guess: int):
     save_vault(vault)
 
     embed = discord.Embed(title="🎲 High-Stakes Dice Roll", description=result_msg, color=color)
-    # The balance is clearly shown at the end here
     embed.set_footer(text=f"New Balance: {vault[uid]:,} Meowency")
     await ctx.send(embed=embed)
 
@@ -813,6 +797,8 @@ def calculate_hand(hand):
         if value + 11 <= 21: value += 11
         else: value += 1
     return value
+
+
 class BlackjackView(discord.ui.View):
     def __init__(self, ctx, bet, player_hand, dealer_hand):
         super().__init__(timeout=60)
@@ -866,6 +852,7 @@ class BlackjackView(discord.ui.View):
         else:
             await interaction.response.edit_message(embed=embed, view=self)
 
+
     @discord.ui.button(label="Hit", style=discord.ButtonStyle.success, emoji="👊")
     async def hit(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user != self.ctx.author: return
@@ -875,12 +862,14 @@ class BlackjackView(discord.ui.View):
         else:
             await self.update_embed(interaction)
 
+
     @discord.ui.button(label="Stand", style=discord.ButtonStyle.danger, emoji="🛑")
     async def stand(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user != self.ctx.author: return
         while calculate_hand(self.dealer_hand) < 17:
             self.dealer_hand.append(get_card())
         await self.update_embed(interaction, final=True)
+
 
 @bot.command(name="bj")
 @commands.cooldown(1, 10, commands.BucketType.user)
@@ -994,6 +983,7 @@ async def leaderboard(ctx):
         print(f"Leaderboard Error: {e}")
         await ctx.send("❌ Something went wrong. Check the bot terminal.")
         
+
 async def send_gif(ctx, search_term):
     
     url = f"https://api.giphy.com/v1/gifs/search?api_key={GIPHY_API_KEY}&q={search_term}&limit=50&rating=g"
@@ -1006,6 +996,7 @@ async def send_gif(ctx, search_term):
         await ctx.send(gif_url)
     else:
         await ctx.send(f"I couldn't find any GIFs for '{search_term}'.")
+
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
