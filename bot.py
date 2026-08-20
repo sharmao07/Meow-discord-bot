@@ -17,6 +17,7 @@ intents.members = True          # This stays ON now
 intents.message_content = True 
 
 bot = commands.Bot(command_prefix='?', intents=intents)
+bot.remove_command("help")
 
 # SSL issue
 os.environ["SSL_CERT_FILE"] = certifi.where()
@@ -52,74 +53,88 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # Ignore the bot's own messages unless they are commands
-    if message.author == bot.user and not message.content.startswith('?'):
+    # 1. Stop processing if the bot sent the message (prevents infinite loop!)
+    if message.author == bot.user:
         return
 
-    # If the message is a DM (no guild/server attached)
+    # 2. If the message is a DM (no guild/server attached)
     if message.guild is None:
-        # Don't log your own DMs back to yourself
-        if message.author.id != OWNER_ID:
-            try:
-                owner = await bot.fetch_user(OWNER_ID)
-            except:
-                owner = None
+        try:
+            owner = await bot.fetch_user(OWNER_ID)
+        except:
+            owner = None
+            
+        if owner:
+            title = "📩 New DM Received"
+            color = discord.Color.blue()
+            author_info = f"{message.author} ({message.author.id})"
+
+            embed = discord.Embed(
+                title=title, 
+                description = str(message.content) if message.content else "(No text content)", 
+                color=color
+            )
+            embed.set_author(name=author_info)
+
+            if not message.content and not message.attachments and not message.stickers:
+                embed.description = "✨ (Contains a custom emoji or system component)"
+
+            if message.attachments:
+                embed.set_image(url=message.attachments[0].url)
                 
-            if owner:
-                is_reply = message.author == bot.user
-                title = "📤 Bot Reply Sent" if is_reply else "📩 New DM Received"
-                color = discord.Color.green() if is_reply else discord.Color.blue()
-                author_info = f"To: {message.channel}" if is_reply else f"{message.author} ({message.author.id})"
+                if len(message.attachments) > 1:
+                    extra_links = "\n".join([a.url for a in message.attachments[1:]])
+                    embed.add_field(name="📎 Extra Attachments", value=extra_links)
 
-                embed = discord.Embed(
-                    title=title, 
-                    description = str(message.content) if message.content else "(No text content)", 
-                    color=color
-                )
-                embed.set_author(name=author_info)
+            if message.stickers:
+                sticker_url = message.stickers[0].url
+                if not message.attachments:
+                    embed.set_image(url=sticker_url)
+                else:
+                    embed.add_field(name="🎨 Sticker", value=f"[View Sticker]({sticker_url})")
 
-                if not message.content and not message.attachments and not message.stickers:
-                    embed.description = "✨ (Contains a custom emoji or system component)"
+            # Send the log directly to your DMs
+            await owner.send(embed=embed)
 
-                if message.attachments:
-                    embed.set_image(url=message.attachments[0].url)
-                    
-                    if len(message.attachments) > 1:
-                        extra_links = "\n".join([a.url for a in message.attachments[1:]])
-                        embed.add_field(name="📎 Extra Attachments", value=extra_links)
-
-                if message.stickers:
-                    sticker_url = message.stickers[0].url
-                    if not message.attachments:
-                        embed.set_image(url=sticker_url)
-                    else:
-                        embed.add_field(name="🎨 Sticker", value=f"[View Sticker]({sticker_url})")
-
-                # Send the log directly to your DMs
-                await owner.send(embed=embed)
-        
-        # Stop processing if the bot sent the DM, so it doesn't try to run commands on its own messages
-        if message.author == bot.user:
-            return
-
+    # 3. Process commands normally
     await bot.process_commands(message)
 
 
-@bot.command(name="send")
-async def send_to_channel(ctx, channel_id: int, *, content: str):
-    if ctx.author.id != 778891631591686164: 
-        await ctx.send("🚫 Only the bot owner can use this command.")
-        return
+
+@bot.command(name="dm")
+async def send_dm(ctx, user_id: int, *, message_text: str):
+    # SECURITY LOCK: Only you can use this
+    if ctx.author.id != OWNER_ID:
+        return await ctx.send("🚫 You don't have permission to use this.")
 
     try:
-        channel = bot.get_channel(channel_id)
-        if channel:
-            await channel.send(content)
-            await ctx.send(f"✅ Message sent to **#{channel.name}**!")
-        else:
-            await ctx.send("❌ Channel not found. Ensure I am in that server.")
+        # Fetch the user and send the message
+        user = await bot.fetch_user(user_id)
+        await user.send(message_text)
+        
+        # Give yourself a confirmation reaction
+        await ctx.message.add_reaction("✅")
+        await ctx.send(f"📬 Sent DM to **{user.name}**!")
     except Exception as e:
-        await ctx.send(f"❌ Error: {e}")    
+        await ctx.send(f"❌ Failed to send DM. They might have DMs off or blocked the bot. Error: {e}")
+
+
+@bot.command(name="send")
+async def send_channel(ctx, channel_id: int, *, message_text: str):
+    # SECURITY LOCK: Only you can use this
+    if ctx.author.id != OWNER_ID:
+        return await ctx.send("🚫 You don't have permission to use this.")
+
+    try:
+        # Fetch the channel and send the message
+        channel = await bot.fetch_channel(channel_id)
+        await channel.send(message_text)
+        
+        # Give yourself a confirmation reaction
+        await ctx.message.add_reaction("✅")
+        await ctx.send(f"📢 Message sent to **#{channel.name}**!")
+    except Exception as e:
+        await ctx.send(f"❌ Failed to send message. I might not have permission to type in that channel. Error: {e}")  
 
 
 def check_permissions(ctx):
