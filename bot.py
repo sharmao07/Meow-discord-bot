@@ -939,6 +939,20 @@ async def bal(ctx):
     await ctx.send(f"💰 **{ctx.author.display_name}**, you have **{balance} Meowency** in your wallet.")
 
 
+@bot.command(name="backup")
+async def backup_data(ctx):
+    # Strictly locks this command so ONLY you can use it
+    if ctx.author.id != 778891631591686164:
+        return await ctx.send("🚫 You do not have permission to download backups.")
+        
+    try:
+        # Sends the physical JSON file into the Discord channel
+        await ctx.author.send("📦 Here is your latest vault backup:", file=discord.File("vault.json"))
+        await ctx.send("✅ Backup sent to your DMs!")
+    except Exception as e:
+        await ctx.send(f"❌ Failed to send backup: {e}")
+
+
 @bot.command(name="top")
 async def leaderboard(ctx):
     try:
