@@ -165,18 +165,24 @@ def check_permissions(ctx):
 
 
 @bot.command(name="reply")
-async def reply(ctx, user_id: int, *, content: str):
-    # Only you should be able to use this
-    if ctx.author.id != 778891631591686164: 
-        return
+async def reply_message(ctx, channel_id: int, message_id: int, *, message_text: str):
+    if ctx.author.id != OWNER_ID:
+        return await ctx.send("🚫 You don't have permission to use this.")
 
     try:
-        user = await bot.fetch_user(user_id)
-        await user.send(content)
-        await ctx.send(f"✅ Message sent to **{user.name}**!")
+        channel = await bot.fetch_channel(channel_id)
+        target_message = await channel.fetch_message(message_id)
+        await target_message.reply(message_text)
+        
+        await ctx.message.add_reaction("✅")
+        await ctx.send(f"💬 Successfully replied to a message in **#{channel.name}**!")
+        
+    except discord.NotFound:
+        await ctx.send("❌ Failed: I couldn't find that message. Make sure the IDs are correct!")
+    except discord.Forbidden:
+        await ctx.send("❌ Failed: I don't have permission to read/send messages in that channel.")
     except Exception as e:
-        await ctx.send(f"❌ Failed to send message: {e}")
-
+        await ctx.send(f"❌ An error occurred: {e}")
 
 # --- DELTARUNE  ---
 
