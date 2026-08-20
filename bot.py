@@ -59,45 +59,49 @@ async def on_message(message):
 
     # 2. If the message is a DM (no guild/server attached)
     if message.guild is None:
-        try:
-            owner = await bot.fetch_user(OWNER_ID)
-        except:
-            owner = None
-            
-        if owner:
-            title = "📩 New DM Received"
-            color = discord.Color.blue()
-            author_info = f"{message.author} ({message.author.id})"
-
-            embed = discord.Embed(
-                title=title, 
-                description = str(message.content) if message.content else "(No text content)", 
-                color=color
-            )
-            embed.set_author(name=author_info)
-
-            if not message.content and not message.attachments and not message.stickers:
-                embed.description = "✨ (Contains a custom emoji or system component)"
-
-            if message.attachments:
-                embed.set_image(url=message.attachments[0].url)
+        
+        # SECURITY CHECK: Only log the DM if the person sending it is NOT you
+        if message.author.id != OWNER_ID:
+            try:
+                owner = await bot.fetch_user(OWNER_ID)
+            except:
+                owner = None
                 
-                if len(message.attachments) > 1:
-                    extra_links = "\n".join([a.url for a in message.attachments[1:]])
-                    embed.add_field(name="📎 Extra Attachments", value=extra_links)
+            if owner:
+                title = "📩 New DM Received"
+                color = discord.Color.blue()
+                author_info = f"{message.author} ({message.author.id})"
 
-            if message.stickers:
-                sticker_url = message.stickers[0].url
-                if not message.attachments:
-                    embed.set_image(url=sticker_url)
-                else:
-                    embed.add_field(name="🎨 Sticker", value=f"[View Sticker]({sticker_url})")
+                embed = discord.Embed(
+                    title=title, 
+                    description = str(message.content) if message.content else "(No text content)", 
+                    color=color
+                )
+                embed.set_author(name=author_info)
 
-            # Send the log directly to your DMs
-            await owner.send(embed=embed)
+                if not message.content and not message.attachments and not message.stickers:
+                    embed.description = "✨ (Contains a custom emoji or system component)"
 
-    # 3. Process commands normally
+                if message.attachments:
+                    embed.set_image(url=message.attachments[0].url)
+                    
+                    if len(message.attachments) > 1:
+                        extra_links = "\n".join([a.url for a in message.attachments[1:]])
+                        embed.add_field(name="📎 Extra Attachments", value=extra_links)
+
+                if message.stickers:
+                    sticker_url = message.stickers[0].url
+                    if not message.attachments:
+                        embed.set_image(url=sticker_url)
+                    else:
+                        embed.add_field(name="🎨 Sticker", value=f"[View Sticker]({sticker_url})")
+
+                # Send the log directly to your DMs
+                await owner.send(embed=embed)
+
+    # 3. Process commands normally (This stays OUTSIDE the check so your commands still work!)
     await bot.process_commands(message)
+    
 
 
 
