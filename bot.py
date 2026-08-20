@@ -25,11 +25,10 @@ os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
-GIPHY_API_KEY = os.getenv('GIPHY_API_KEY')
-LOG_CHANNEL_ID = 1501630207075811418
+KLIPY_API_KEY = os.getenv('KLIPY_API_KEY')
+OWNER_ID = 778891631591686164
 
 def load_vault():
-    
     if not os.path.exists("vault.json"):
         with open("vault.json", "w") as f:
             json.dump({}, f)
@@ -43,65 +42,63 @@ def load_vault():
         return {}
 
 def save_vault(data):
-  
     with open("vault.json", "w") as f:
         json.dump(data, f, indent=4)
 
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user}')
-    
-    
+
+
 @bot.event
 async def on_message(message):
+    # Ignore the bot's own messages unless they are commands
     if message.author == bot.user and not message.content.startswith('?'):
         return
 
-    
+    # If the message is a DM (no guild/server attached)
     if message.guild is None:
-        log_channel = bot.get_channel(LOG_CHANNEL_ID)
-        if not log_channel:
+        # Don't log your own DMs back to yourself
+        if message.author.id != OWNER_ID:
             try:
-                log_channel = await bot.fetch_channel(LOG_CHANNEL_ID)
+                owner = await bot.fetch_user(OWNER_ID)
             except:
-                pass
-            
-        if log_channel:
-            
-            is_reply = message.author == bot.user
-            title = "📤 Bot Reply Sent" if is_reply else "📩 New DM Received"
-            color = discord.Color.green() if is_reply else discord.Color.blue()
-            author_info = f"To: {message.channel}" if is_reply else f"{message.author} ({message.author.id})"
-
-            
-            embed = discord.Embed(
-                title=title, 
-                description = str(message.content) if message.content else "(No text content)", 
-                color=color
-            )
-            embed.set_author(name=author_info)
-
-            if not message.content and not message.attachments and not message.stickers:
-                embed.description = "✨ (Contains a custom emoji or system component)"
-
-            
-            if message.attachments:
-                embed.set_image(url=message.attachments[0].url)
+                owner = None
                 
-                if len(message.attachments) > 1:
-                    extra_links = "\n".join([a.url for a in message.attachments[1:]])
-                    embed.add_field(name="📎 Extra Attachments", value=extra_links)
+            if owner:
+                is_reply = message.author == bot.user
+                title = "📤 Bot Reply Sent" if is_reply else "📩 New DM Received"
+                color = discord.Color.green() if is_reply else discord.Color.blue()
+                author_info = f"To: {message.channel}" if is_reply else f"{message.author} ({message.author.id})"
 
-            if message.stickers:
-                sticker_url = message.stickers[0].url
-                # If no image attachment exists, show the sticker as the main image
-                if not message.attachments:
-                    embed.set_image(url=sticker_url)
-                else:
-                    embed.add_field(name="🎨 Sticker", value=f"[View Sticker]({sticker_url})")
+                embed = discord.Embed(
+                    title=title, 
+                    description = str(message.content) if message.content else "(No text content)", 
+                    color=color
+                )
+                embed.set_author(name=author_info)
 
-            await log_channel.send(embed=embed)
+                if not message.content and not message.attachments and not message.stickers:
+                    embed.description = "✨ (Contains a custom emoji or system component)"
+
+                if message.attachments:
+                    embed.set_image(url=message.attachments[0].url)
+                    
+                    if len(message.attachments) > 1:
+                        extra_links = "\n".join([a.url for a in message.attachments[1:]])
+                        embed.add_field(name="📎 Extra Attachments", value=extra_links)
+
+                if message.stickers:
+                    sticker_url = message.stickers[0].url
+                    if not message.attachments:
+                        embed.set_image(url=sticker_url)
+                    else:
+                        embed.add_field(name="🎨 Sticker", value=f"[View Sticker]({sticker_url})")
+
+                # Send the log directly to your DMs
+                await owner.send(embed=embed)
         
+        # Stop processing if the bot sent the DM, so it doesn't try to run commands on its own messages
         if message.author == bot.user:
             return
 
@@ -999,17 +996,26 @@ async def leaderboard(ctx):
         
 
 async def send_gif(ctx, search_term):
+    # Using Klipy's search API
+    url = f"https://api.klipy.co/v2/search?q={search_term}&key={KLIPY_API_KEY}&limit=50"
     
-    url = f"https://api.giphy.com/v1/gifs/search?api_key={GIPHY_API_KEY}&q={search_term}&limit=50&rating=g"
-    
-    response = requests.get(url).json()
-    
-    if "data" in response and len(response["data"]) > 0:
-        choice = random.choice(response["data"])
-        gif_url = choice['images']['original']['url']
-        await ctx.send(gif_url)
-    else:
-        await ctx.send(f"I couldn't find any GIFs for '{search_term}'.")
+    try:
+        response = requests.get(url).json()
+        
+        # Klipy groups their GIFs under "results" instead of "data"
+        if "results" in response and len(response["results"]) > 0:
+            choice = random.choice(response["results"])
+            
+            # Digs into the Klipy data structure to grab the actual .gif link
+            gif_url = choice['media_formats']['gif']['url']
+            await ctx.send(gif_url)
+        else:
+            await ctx.send(f"I couldn't find any GIFs for '{search_term}'.")
+            
+    except Exception as e:
+        print(f"Klipy API Error: {e}")
+        await ctx.send("❌ Error fetching GIF from Klipy.")
+        
 
 @bot.event
 async def on_command_error(ctx, error):
