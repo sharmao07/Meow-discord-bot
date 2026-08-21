@@ -52,21 +52,15 @@ async def on_ready():
 
 
 @bot.event
-async def on_message(message):
+async def on_message(message: discord.Message):
     # 1. Stop processing if the bot sent the message (prevents infinite loop!)
     if message.author == bot.user:
         return
 
-    # 2. If the message is a DM (no guild/server attached)
-    if message.guild is None:
-        
-        # SECURITY CHECK: Only log the DM if the person sending it is NOT you
-        if message.author.id != OWNER_ID:
-            try:
-                owner = await bot.fetch_user(OWNER_ID)
-            except:
-                owner = None
-                
+    # 2. Handle DM logging (Only log if it's a DM AND the sender is NOT you)
+    if message.guild is None and message.author.id != OWNER_ID:
+        try:
+            owner = await bot.fetch_user(OWNER_ID)
             if owner:
                 title = "📩 New DM Received"
                 color = discord.Color.blue()
@@ -74,7 +68,7 @@ async def on_message(message):
 
                 embed = discord.Embed(
                     title=title, 
-                    description = str(message.content) if message.content else "(No text content)", 
+                    description=str(message.content) if message.content else "(No text content)", 
                     color=color
                 )
                 embed.set_author(name=author_info)
@@ -98,9 +92,12 @@ async def on_message(message):
 
                 # Send the log directly to your DMs
                 await owner.send(embed=embed)
+        except Exception as e:
+            print(f"Failed to log DM: {e}")
 
-    # 3. Process commands normally (This stays OUTSIDE the check so your commands still work!)
+    # 3. Always process commands (This is now perfectly aligned!)
     await bot.process_commands(message)
+    
     
 
 
