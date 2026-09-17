@@ -1080,6 +1080,8 @@ async def on_command_error(ctx, error):
         
         # Format <t:TIMESTAMP:R> creates the live countdown
         await ctx.send(f"⏳ **Too fast!** Please wait <t:{finish_time}:R> before using that again.")
-        
 
-bot.run(DISCORD_TOKEN)
+
+if __name__ == "__main__":
+    keep_alive.keep_alive()
+    bot.run(DISCORD_TOKEN)
