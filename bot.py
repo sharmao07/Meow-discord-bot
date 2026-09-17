@@ -10,7 +10,7 @@ import asyncio
 import time
 import discord
 from discord.ext import commands
-
+import keep_alive
 
 intents = discord.Intents.default()
 intents.members = True          # This stays ON now
