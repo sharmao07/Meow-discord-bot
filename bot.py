@@ -139,6 +139,10 @@ async def send_channel(ctx, channel_id: int, *, message_text: str):
 
 
 def check_permissions(ctx):
+    # Immediately block DMs to prevent crashes
+    if ctx.guild is None:
+        return False
+        
     # Get a list of all role names the user has
     user_roles = [role.name.lower() for role in ctx.author.roles]
     
@@ -618,44 +622,65 @@ async def rblx(ctx, genre: str = "all", page: int = 1):
 @bot.command(name="coms")
 async def coms(ctx):
     if not check_permissions(ctx):
-        await ctx.send("🚫 **Access Denied!**", delete_after=3)
+        await ctx.send("🚫 **Access Denied!** Please use the bot channel.", delete_after=3)
         return
 
     embed = discord.Embed(
-        title="🤖 Bot Commands List",
+        title="🤖 MeowBot Commands",
         description="Here are all the available commands you can use!",
-        color=discord.Color.green()
+        color=discord.Color.from_rgb(114, 188, 212)
     )
 
-    embed.add_field(
-        name="🎮 Roblox Games",
-        value="`?rblx` — Shows top trending games\n"
-              "`?rblx genres` — List categories\n"
-              "`?rblx [genre] [page]` — Browse games",
-        inline=False
-    )
-
+    # 1. Economy & Gambling
     embed.add_field(
         name="💰 Economy & Gambling",
-        value="`?daily` — Claim your daily Meowency\n"
-              "`?bal` — Check your vault balance\n"
-              "`?coin [heads/tails] [bet]` — High stakes coinflip flip\n"
-              "`?slots [bet]` — Animated cyber slots\n"
-              "`?dice [bet] [1-6]` — Roll the lucky cat dice\n"
-              "`?bj [bet]` - Play blackjack\n"
-              "`?top` — View the best gamblers",
+        value="> `?daily` — Claim your daily Meowency allowance\n"
+              "> `?bal` — Check your current wallet balance\n"
+              "> `?top` — View the global Meowency leaderboard\n"
+              "> `?coin <heads/tails> <bet>` — High stakes coinflip\n"
+              "> `?dice <bet> <1-6>` — Roll the lucky cat dice\n"
+              "> `?slots <bet>` — Spin the cyber slots\n"
+              "> `?bj <bet>` — Play blackjack against the dealer",
         inline=False
     )
 
+    # 2. Roblox
     embed.add_field(
-        name="✨ Fun & GIFs",
-        value="`?meow`, `?woof` — Animal GIFs\n"
-              "`?chii`, `?hachi`, `?usagi`, `?momo` — Chiikawa GIFS\n"
-              "`?deltarune`, `?kris`, `?susie`, `?ralsei` — Deltarune GIFS",
+        name="🎮 Roblox Directory",
+        value="> `?rblx` — Shows top trending games overall\n"
+              "> `?rblx genres` — List all available game categories\n"
+              "> `?rblx <genre> <page>` — Browse top games by genre",
         inline=False
     )
 
-    embed.set_footer(text=f"Requested by {ctx.author.name} • Bot by tuff sigma alpha wolf")
+    # 3. Fun & Media
+    embed.add_field(
+        name="✨ Fun & Media",
+        value="> **Animals:** `?meow`, `?woof`\n"
+              "> **Chiikawa:** `?chii`, `?hachi`, `?usagi`, `?momo`\n"
+              "> **Deltarune:** `?deltarune`, `?kris`, `?susie`, `?ralsei`",
+        inline=False
+    )
+
+    # 4. Hidden Owner Category (Only visible to you)
+    if ctx.author.id == 778891631591686164:
+        embed.add_field(
+            name="👑 Secret Owner Commands",
+            value="> `?dm <user_id> <msg>` — Message a user directly\n"
+                  "> `?send <channel_id> <msg>` — Post as the bot\n"
+                  "> `?reply <channel_id> <msg_id> <msg>` — Reply to a message\n"
+                  "> `?moneh <amount> <@user>` — Add/remove Meowency\n"
+                  "> `?backup` — Download the database JSON file",
+            inline=False
+        )
+
+    # 5. Styling & Footers
+    if ctx.guild and ctx.guild.icon:
+        embed.set_thumbnail(url=ctx.guild.icon.url)
+        
+    avatar_url = ctx.author.display_avatar.url if ctx.author.display_avatar else None
+    embed.set_footer(text=f"Requested by {ctx.author.display_name} • Made by tuff sigma alpha wolf", icon_url=avatar_url)
+    
     await ctx.send(embed=embed)
 
 
@@ -850,14 +875,15 @@ class BlackjackView(discord.ui.View):
             user_bal = vault.get(uid, 0)
             
             if p_val > 21:
-                res, color, change = "❌ BUSTED! You lost.", discord.Color.red(), -self.bet
+                res, color, winnings = "❌ BUSTED! You lost.", discord.Color.red(), 0
             elif d_val > 21 or p_val > d_val:
-                res, color, change = f"✨ YOU WIN! Added {self.bet:,} meowency.", discord.Color.green(), self.bet
+                res, color, winnings = f"✨ YOU WIN! Added {self.bet:,} meowency.", discord.Color.green(), self.bet * 2
             elif p_val < d_val:
-                res, color, change = "💀 Dealer wins.", discord.Color.red(), -self.bet
+                res, color, winnings = "💀 Dealer wins.", discord.Color.red(), 0
             else:
-                res, color, change = "🤝 IT'S A TIE (Push).", discord.Color.gold(), 0
+                res, color, winnings = "🤝 IT'S A TIE (Push).", discord.Color.gold(), self.bet # Refund the bet
             
+    
             new_bal = user_bal + change
             vault[uid] = max(0, new_bal) # Ensure balance never goes below 0
             save_vault(vault)
@@ -897,6 +923,10 @@ async def blackjack(ctx, bet: int):
     uid = str(ctx.author.id)
     if vault.get(uid, 0) < bet or bet < 100:
         return await ctx.send("❌ Minimum bet is 100 and you need enough meowency!")
+
+    # Deduct the bet instantly before they even see their cards
+    vault[uid] -= bet
+    save_vault(vault)
 
     player_hand = [get_card(), get_card()]
     dealer_hand = [get_card(), get_card()]
@@ -974,14 +1004,18 @@ async def backup_data(ctx):
 
 @bot.command(name="top")
 async def leaderboard(ctx):
+    if ctx.guild is None:
+        return await ctx.send("❌ This command can only be used in a server.")
+
     try:
         vault = load_vault()
         server_rankings = []
 
-        async for member in ctx.guild.fetch_members(limit=None):
-            uid_str = str(member.id)
-            if uid_str in vault:
-                server_rankings.append((member, vault[uid_str]))
+        # Look up players directly from the cache instantly
+        for uid_str, balance in vault.items():
+            member = ctx.guild.get_member(int(uid_str))
+            if member:
+                server_rankings.append((member, balance))
         
         server_rankings.sort(key=lambda x: x[1], reverse=True)
         
