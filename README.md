@@ -1,6 +1,6 @@
 # Meow-discord-bot
 
-A high energy Discord economy and fun bot featuring gambling games, Roblox discovery, and Chiikawa-themed GIFs.
+A high energy Discord economy and fun bot featuring gambling games, Roblox discovery, and Chiikawa-themed GIFs. Bot focused on interactive server engagement. Programmed custom slash commands and integrated dynamic media to keep community users active daily.
 
 
 ## ✨ Features
