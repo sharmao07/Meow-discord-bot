@@ -1055,8 +1055,15 @@ async def send_gif(ctx, search_term):
     # Using Klipy's search API
     url = f"https://api.klipy.co/v2/search?q={search_term}&key={KLIPY_API_KEY}&limit=50"
     
+    # SPOOFED HEADERS: Tricks Cloudflare into thinking the bot is a normal Chrome browser
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json"
+    }
+    
     try:
-        response = requests.get(url).json()
+        # Attach the spoofed headers to the API request
+        response = requests.get(url, headers=headers).json()
         
         # Klipy groups their GIFs under "results" instead of "data"
         if "results" in response and len(response["results"]) > 0:
