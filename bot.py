@@ -1090,5 +1090,13 @@ async def on_command_error(ctx, error):
 
 
 if __name__ == "__main__":
+    print("Starting web server...")
     keep_alive.keep_alive()
+    
+    print("Web server started! Checking tokens...")
+    if not DISCORD_TOKEN:
+        print("🚨 ERROR: DISCORD_TOKEN is missing or empty!")
+    else:
+        print("Token found! Booting Discord bot...")
+        
     bot.run(DISCORD_TOKEN)
